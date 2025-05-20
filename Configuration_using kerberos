@@ -1,0 +1,77 @@
+# Install postgres server ​
+$ sudo apt install postgresql-14 or 16​
+
+Create a principal postgres which is the database user and the Linux login user.​
+$ sudo kadmin.local -q "add_principal -randkey postgres@EXAMPLE.COM"​
+
+​Add a principal postgres/localhost as a principal instance for Service server​
+$ sudo kadmin.local -q "add_principal -randkey postgres/localhost@EXAMPLE.COM"​
+
+Create keytab files for user & PostgresSQL service.​
+$ sudo kadmin.local -q "xst -kt /tmp/postgres.service.keytab postgres/localhost@EXAMPLE.COM"​
+$ sudo kadmin.local -q "xst -kt /tmp/postgres.user.keytab postgres@EXAMPLE.COM"​
+
+# Copy keytab files from kerberos- server to local machine & then copy to client machines.​
+
+To make the necessary configuration, i.e. Postgresql.conf and pg_hba.conf.  ​
+PostgreSQL for user authentication using GSSAPI with Kerberos.​
+​# Once keytab file has been set properly, we can configure the keytab file location in postgresql.conf like below.​
+
+krb_server_keyfile = '/etc/postgresql/14/main/postgres.service.keytab' ​
+
+​Other than the keytab, we also need Postgres Server to allow connection from the network by change the listen_addresses.​
+
+$ sudo nano /etc/postgresql/14/main/postgresql.conf ( listen_addresses = '*' ) ​
+
+PostgreSQL Client Authentication​
+pg_hba.conf is the file used to control client's authentication in PostgreSQL, where hba stands for host-based authentication. ​
+
+# IPv4 local connections: ​
+
+host                all                    all                127.0.0.1/32                        trust ​
+hostgssenc          postgres               postgres           127.0.0.1/32                         gss include_realm=0​
+
+
+Let’s try to log in use database admin user postgres​
+
+$ psql  -h localhost -U postgres -d postgres​
+psql (16.2)​
+GSSAPI-encrypted connection​
+Type "help" for help.​
+postgres=# \q​
+
+​
+# To grant a user permission to read from specific tables in a Postgre database,​
+
+GRANT SELECT ON TABLE public.word_counts TO Thapak;​
+
+Now login to postgres DB with user: Thapak to access word count table.​
+
+
+​$ kinit -kt /home/qolsysjci/keytabs/jthapasa.user.keytab Thapak ​
+$ klist​
+
+output-- 
+Ticket cache: FILE:/tmp/krb5cc_1000​
+Default principal: jthapasa@KAFKA.SECURE​
+Valid starting     Expires            Service principal​
+15/10/24 19:16:48  16/10/24 05:16:48  krbtgt/KAFKA.SECURE@KAFKA.SECURE​
+    renew until 16/10/24 19:16:46​
+
+Now try with new user:
+
+$ psql  -h localhost -U thapak -d postgres​
+
+psql (14.13 (Ubuntu 14.13-1.pgdg20.04+1))​
+GSSAPI-encrypted connection​
+Type "help" for help. ​
+postgres=> select * from word_counts ;​
+  word   | count ​
+
+---------+-------​
+
+count   |     1​
+
+test    |     3​
+
+( 2 rows)
